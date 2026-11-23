@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 import sklearn
 from sklearn.compose import ColumnTransformer
@@ -13,7 +14,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, classification_report, confusion_matrix, f1_score
-from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_predict
 from sklearn.pipeline import make_pipeline
 
 TARGET = "Accident_severity"
@@ -79,9 +80,38 @@ def candidates():
         "Regresión logística balanceada": make_pipeline(encoding, LogisticRegression(class_weight="balanced", max_iter=1000, random_state=SEED)),
         "Bosque aleatorio balanceado": make_pipeline(encoding, RandomForestClassifier(n_estimators=120, min_samples_leaf=4,
                                                                                       class_weight="balanced", random_state=SEED, n_jobs=2)),
+        "Bosque aleatorio balanceado de hojas pequeñas": make_pipeline(encoding, RandomForestClassifier(
+            n_estimators=280, min_samples_leaf=1, max_features=0.65, class_weight="balanced", random_state=SEED, n_jobs=2)),
+        "Bosque aleatorio con ajuste de decisión": make_pipeline(encoding, RandomForestClassifier(
+            n_estimators=280, min_samples_leaf=2, max_features=0.65, random_state=SEED, n_jobs=2)),
         "Gradient boosting balanceado": make_pipeline(dense, HistGradientBoostingClassifier(categorical_features=list(range(3, 3 + len(CATEGORIES))),
                                                                                            class_weight="balanced", random_state=SEED, max_iter=90)),
     }
+
+
+def adjust_decision(probabilities, factors):
+    scores = probabilities * factors
+    return scores / scores.sum(axis=1, keepdims=True)
+
+
+def tune_decision(y, probabilities, classes):
+    """Choose decision multipliers from out-of-fold predictions only."""
+    expected = np.searchsorted(classes, y)
+    counts = np.bincount(expected, minlength=len(classes))
+    alternatives = [np.ones(len(classes))]
+    grid = np.geomspace(0.25, 6, 17)
+    # Keep the common class as the scale reference and vary the two minority classes.
+    alternatives.extend(np.array([fatal, serious, 1.0]) for fatal in grid for serious in grid)
+
+    def score(factors):
+        predictions = np.argmax(probabilities * factors, axis=1)
+        correct = expected == predictions
+        hits = np.bincount(expected[correct], minlength=len(classes))
+        predicted = np.bincount(predictions, minlength=len(classes))
+        return float(np.mean(2 * hits / (counts + predicted)))
+
+    factors = max(alternatives, key=score)
+    return factors, score(factors), score(alternatives[0])
 
 
 def train(source, reference, out):
@@ -99,13 +129,17 @@ def train(source, reference, out):
         raise ValueError("Después de reservar la prueba faltan ejemplos de alguna clase.")
     cv = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=SEED)
     models = candidates()
-    validation = {
-        name: float(cross_val_score(model, fit_x, fit_y, groups=identify(fit_x), cv=cv, scoring="f1_macro", error_score="raise").mean())
-        for name, model in models.items()
-    }
+    classes = np.array(sorted(LABELS))
+    training_groups = identify(fit_x)
+    validation, unadjusted, factors_by_model = {}, {}, {}
+    for name, model in models.items():
+        out_of_fold = cross_val_predict(model, fit_x, fit_y, groups=training_groups, cv=cv, method="predict_proba")
+        factors_by_model[name], validation[name], unadjusted[name] = tune_decision(fit_y, out_of_fold, classes)
     name = max(validation, key=validation.get)
     estimator = models[name].fit(fit_x, fit_y)
-    predicted = estimator.predict(test_x)
+    factors = factors_by_model[name]
+    scores = adjust_decision(estimator.predict_proba(test_x), factors)
+    predicted = classes[np.argmax(scores, axis=1)]
     baseline = DummyClassifier(strategy="most_frequent").fit(fit_x, fit_y).predict(test_x)
     metrics = {
         "algorithm": name,
@@ -118,6 +152,8 @@ def train(source, reference, out):
             test_y, predicted, labels=LABELS, output_dict=True, zero_division=0).items() if label in LABELS},
         "confusionMatrix": confusion_matrix(test_y, predicted, labels=LABELS).tolist(),
         "validationMacroF1": validation,
+        "validationUnadjustedMacroF1": unadjusted,
+        "decisionFactors": dict(zip(classes, factors.tolist())),
         "trainRows": len(fit_x),
         "testRows": len(test_x),
         "testClassCounts": test_y.value_counts().to_dict(),
@@ -128,16 +164,20 @@ def train(source, reference, out):
     }
     levels = {field: sorted(fit_x[field].dropna().unique().tolist()) for field in CATEGORIES}
     out.mkdir(parents=True, exist_ok=True)
-    joblib.dump(estimator, out / "model.joblib", compress=3)
+    joblib.dump({"estimator": estimator, "decisionFactors": factors}, out / "model.joblib", compress=3)
     (out / "report.json").write_text(json.dumps({"metrics": metrics, "options": levels}, ensure_ascii=False, indent=2), encoding="utf-8")
     return metrics
 
 
 def predict(path, payload):
-    estimator = joblib.load(path)
+    artifact = joblib.load(path)
     row = prepare(pd.DataFrame([payload]))
-    predicted = estimator.predict(row)[0]
-    probabilities = dict(zip(estimator.classes_, estimator.predict_proba(row)[0]))
+    estimator = artifact["estimator"] if isinstance(artifact, dict) else artifact
+    scores = estimator.predict_proba(row)
+    if isinstance(artifact, dict):
+        scores = adjust_decision(scores, artifact["decisionFactors"])
+    predicted = estimator.classes_[np.argmax(scores[0])]
+    probabilities = dict(zip(estimator.classes_, scores[0]))
     return {"category": predicted, "probabilities": probabilities}
 
 

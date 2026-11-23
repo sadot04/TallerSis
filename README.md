@@ -43,8 +43,8 @@ Abre el [cliente web](http://127.0.0.1:5173) y entra con las credenciales del ba
 ## Usar y actualizar el modelo
 
 1. En **Predicción**, completa los campos o usa el ejemplo y pulsa **Clasificar accidente**.
-2. En **Historial**, abre el reporte para consultar los datos enviados, las probabilidades y la versión.
-3. En **Métricas**, consulta el resultado por clase, la matriz de confusión y exporta el pipeline `.joblib`.
+2. En **Historial**, abre el reporte para consultar los datos enviados, los puntajes y la versión.
+3. En **Métricas**, consulta el resultado por clase, la matriz de confusión y exporta el archivo `.joblib` de la versión activa.
 4. En **Entrenamiento**, carga un CSV con [los 13 campos](backend/features.json) y la etiqueta `Accident_severity`. Usa `Slight Injury`, `Serious Injury` o `Fatal injury`. El archivo admite un máximo de 8 MiB y 100 000 filas. Debe contener al menos 150 filas distintas y 15 por clase.
 5. Selecciona el CSV y solicita el entrenamiento. Si el candidato cumple los criterios documentados, la API lo activa y conserva las predicciones anteriores con su versión.
 
@@ -54,10 +54,26 @@ Para clasificar localmente con el archivo exportado, desde la raíz y con las de
 $fields = Get-Content backend/features.json -Raw | ConvertFrom-Json
 $data = @{}
 $fields | ForEach-Object { $data[$_.name] = $_.example }
-$data | ConvertTo-Json -Compress | py backend/ml/train.py predict --model "C:\ruta\modelo-vial-initial.joblib"
+$data | ConvertTo-Json -Compress | py backend/ml/train.py predict --model "backend/seed/ref-v2/model.joblib"
 ```
 
-Joblib carga objetos Python serializados. Usa únicamente archivos de este servicio o de orígenes de confianza.
+El archivo de `ref-v2` contiene el pipeline y los factores de decisión. El comando anterior aplica ambos. Joblib carga objetos Python serializados. Usa únicamente archivos de este servicio o de orígenes de confianza.
+
+## Mejora del modelo `ref-v2`
+
+Los dos modelos se evaluaron sobre los mismos 1 632 registros de referencia. La selección de candidatos y el ajuste de los puntajes se hicieron con predicciones fuera de muestra de tres particiones en el conjunto de desarrollo.
+
+| Métrica | `initial` | `ref-v2` |
+| --- | ---: | ---: |
+| F1 macro | 45,69 % | **54,90 %** |
+| Exactitud | 76,16 % | **82,84 %** |
+| F1 de lesión grave | 31,66 % | **37,47 %** |
+| Precisión de lesión fatal | 14,71 % | **50,00 %** |
+| Sensibilidad de lesión fatal | 29,41 % (5 de 17) | 29,41 % (5 de 17) |
+
+`ref-v2` ajusta un bosque de 280 árboles y aprende factores de decisión por clase con los mismos 13 campos. El conjunto de referencia quedó reservado durante esa selección. Los porcentajes de la interfaz son puntajes normalizados. La versión `initial` y su archivo se conservan para que las predicciones anteriores sigan vinculadas al modelo que las produjo.
+
+La clase fatal tenía solo 65 ejemplos de ajuste. El candidato redujo las falsas alertas fatales de 29 a 5 y siguió omitiendo 12 casos fatales. Las variantes que incluían minutos perdieron ventaja al validar agrupando por día y hora. La cifra de F1 corresponde al conjunto de referencia del proyecto. Hace falta validar con más casos graves y fatales, agrupados por accidente y con registros de otro periodo, para medir generalización.
 
 ## Datos, base y pruebas
 
@@ -82,10 +98,11 @@ Para repetir la exploración, abre el [notebook](backend/ml/exploracion.ipynb) d
 
 ## Entregables
 
-- [Informe CRISP-ML(Q) y cronograma](output/pdf/informe-crisp-mlq.pdf)
+- [Informe CRISP-ML(Q) y cronograma de la versión inicial](output/pdf/informe-crisp-mlq.pdf)
 - [Diagrama de base de datos](docs/base-de-datos.svg) y [script SQL](backend/schema.sql)
 - [Especificación Swagger/OpenAPI](backend/openapi.json)
-- [Modelo inicial](backend/seed/model.joblib) y [métricas](backend/seed/report.json)
+- [Modelo optimizado](backend/seed/ref-v2/model.joblib) y [métricas de `ref-v2`](backend/seed/ref-v2/report.json)
+- [Modelo inicial](backend/seed/model.joblib) y [métricas de `initial`](backend/seed/report.json)
 - [Repositorio público TallerSis](https://github.com/sadot04/TallerSis)
 
-Se usa `main` para la entrega y `develop` para integrar `feat/modelo-crisp`, `feat/api-rest`, `feat/cliente-react` y `feat/entrega`.
+Se usa `main` para la entrega y `develop` para integrar `feat/modelo-crisp`, `feat/api-rest`, `feat/cliente-react`, `feat/entrega` y `feat/mejorar-modelo`.

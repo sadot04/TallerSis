@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
+import { DatabaseSync } from 'node:sqlite';
 import { setTimeout } from 'node:timers/promises';
 
 const runtime = await mkdtemp(join(process.cwd(), 'runtime-smoke-'));
@@ -52,6 +53,19 @@ async function stop() {
 }
 
 try {
+  const legacy = new DatabaseSync(join(runtime, 'traffic.sqlite'));
+  try {
+    legacy.exec(await readFile('schema.sql', 'utf8'));
+    const { metrics } = JSON.parse(await readFile('seed/report.json', 'utf8'));
+    const previousFields = JSON.parse(await readFile('features.json', 'utf8'));
+    const previousInput = Object.fromEntries(previousFields.map(field => [field.name, field.example]));
+    const createdAt = new Date().toISOString();
+    legacy.prepare('INSERT INTO models VALUES (?, NULL, ?, ?, 1)').run('initial', JSON.stringify(metrics), createdAt);
+    legacy.prepare('INSERT INTO predictions VALUES (1, ?, ?, ?, ?, ?)').run('initial', 'test',
+      JSON.stringify(previousInput), JSON.stringify({ category: 'Slight Injury', probabilities: { 'Slight Injury': 1 } }), createdAt);
+  } finally {
+    legacy.close();
+  }
   await start();
   await request('/docs/', 200);
   const spec = await (await request('/openapi.json', 200)).json();
@@ -74,13 +88,17 @@ try {
   assert.ok(Math.abs(Object.values(prediction.probabilities).reduce((a, b) => a + b) - 1) < 1e-9);
   const list = await (await request('/api/predictions?limit=1', 200)).json();
   assert.equal(list.items[0].id, prediction.id);
-  assert.equal((await (await request('/api/predictions?before=' + prediction.id, 200)).json()).items.length, 0);
+  const previous = await (await request('/api/predictions?before=' + prediction.id, 200)).json();
+  assert.equal(previous.items.length, 1);
+  assert.equal(previous.items[0].version, 'initial');
   await request('/api/predictions?limit=200', 422);
   const initial = await (await request('/api/model/metrics', 200)).json();
+  assert.equal(initial.version, 'ref-v2');
+  assert.equal(prediction.version, initial.version);
   assert.ok(initial.macroF1 > initial.baselineMacroF1);
   const exportResponse = await request('/api/model/export', 200);
-  assert.match(exportResponse.headers.get('content-disposition'), /modelo-vial-initial\.joblib/);
-  assert.deepEqual(Buffer.from(await exportResponse.arrayBuffer()), await readFile('seed/model.joblib'));
+  assert.match(exportResponse.headers.get('content-disposition'), /modelo-vial-ref-v2\.joblib/);
+  assert.deepEqual(Buffer.from(await exportResponse.arrayBuffer()), await readFile('seed/ref-v2/model.joblib'));
   const bad = new FormData();
   bad.append('file', new Blob(['invalid\n1\n']), 'invalido.csv');
   await request('/api/datasets', 422, { method: 'POST', body: bad });
@@ -106,7 +124,7 @@ try {
     const afterRestart = await (await request('/api/model/metrics', 200)).json();
     assert.equal(afterRestart.version, job.id);
     const persisted = await (await request('/api/predictions', 200)).json();
-    assert.equal(persisted.items[0].version, 'initial');
+    assert.equal(persisted.items[0].version, initial.version);
   }
   console.log('Prueba de integración aprobada' + (process.argv.includes('--retrain') ? ' con reentrenamiento y reinicio.' : '.'));
 } finally {

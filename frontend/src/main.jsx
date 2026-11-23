@@ -167,7 +167,7 @@ function PredictionPanel({ api, fields }) {
       {!busy && !result && !error && <Empty icon={Activity} title="Aún no hay una predicción">Completa el formulario y clasifica el accidente para ver su gravedad estimada.</Empty>}
       {result && <div className="result-body">
         <h3>{human(result.category)}</h3>
-        <p className="muted">Probabilidad estimada por clase</p>
+        <p className="muted">Puntaje relativo por clase</p>
         <div className="bar-list">{Object.entries(labels).map(([key, label]) => <div key={key}>
           <div className="bar-label"><span>{label}</span><strong>{pct(result.probabilities[key])}</strong></div>
           <progress className={colors[key]} max="1" value={result.probabilities[key]} aria-label={label} />
