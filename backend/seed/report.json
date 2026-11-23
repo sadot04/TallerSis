@@ -1,0 +1,173 @@
+{
+  "metrics": {
+    "algorithm": "Bosque aleatorio balanceado",
+    "accuracy": 0.7616421568627451,
+    "balancedAccuracy": 0.5033182235772227,
+    "macroF1": 0.45685524004851735,
+    "baselineMacroF1": 0.3086541625534715,
+    "labels": [
+      "Slight Injury",
+      "Serious Injury",
+      "Fatal injury"
+    ],
+    "perClass": {
+      "Slight Injury": {
+        "precision": 0.8975155279503105,
+        "recall": 0.8216062544420754,
+        "f1-score": 0.8578849721706865,
+        "support": 1407.0
+      },
+      "Serious Injury": {
+        "precision": 0.2645161290322581,
+        "recall": 0.3942307692307692,
+        "f1-score": 0.3166023166023166,
+        "support": 208.0
+      },
+      "Fatal injury": {
+        "precision": 0.14705882352941177,
+        "recall": 0.29411764705882354,
+        "f1-score": 0.19607843137254902,
+        "support": 17.0
+      }
+    },
+    "confusionMatrix": [
+      [
+        1156,
+        225,
+        26
+      ],
+      [
+        123,
+        82,
+        3
+      ],
+      [
+        9,
+        3,
+        5
+      ]
+    ],
+    "validationMacroF1": {
+      "Regresión logística balanceada": 0.30486534836255524,
+      "Bosque aleatorio balanceado": 0.4631326609287745,
+      "Gradient boosting balanceado": 0.4510090981573256
+    },
+    "trainRows": 6527,
+    "testRows": 1632,
+    "testClassCounts": {
+      "Slight Injury": 1407,
+      "Serious Injury": 208,
+      "Fatal injury": 17
+    },
+    "sourceSha256": "c0ddb80c64bada8a6b833077d5f4a861114d709fd008a7aa70134fbd3353e7c5",
+    "referenceSha256": "c0ddb80c64bada8a6b833077d5f4a861114d709fd008a7aa70134fbd3353e7c5",
+    "sklearnVersion": "1.9.0",
+    "seed": 42
+  },
+  "options": {
+    "Day_of_week": [
+      "Friday",
+      "Monday",
+      "Saturday",
+      "Sunday",
+      "Thursday",
+      "Tuesday",
+      "Wednesday"
+    ],
+    "Driving_experience": [
+      "1-2yr",
+      "2-5yr",
+      "5-10yr",
+      "Above 10yr",
+      "Below 1yr",
+      "No Licence",
+      "unknown"
+    ],
+    "Type_of_vehicle": [
+      "Automobile",
+      "Bajaj",
+      "Bicycle",
+      "Long lorry",
+      "Lorry (11?40Q)",
+      "Lorry (41?100Q)",
+      "Motorcycle",
+      "Other",
+      "Pick up upto 10Q",
+      "Public (12 seats)",
+      "Public (13?45 seats)",
+      "Public (> 45 seats)",
+      "Ridden horse",
+      "Special vehicle",
+      "Stationwagen",
+      "Taxi",
+      "Turbo"
+    ],
+    "Area_accident_occured": [
+      "Church areas",
+      "Hospital areas",
+      "Industrial areas",
+      "Market areas",
+      "Office areas",
+      "Other",
+      "Outside rural areas",
+      "Recreational areas",
+      "Residential areas",
+      "Rural village areas",
+      "Rural village areasOffice areas",
+      "School areas",
+      "Unknown"
+    ],
+    "Road_surface_type": [
+      "Asphalt roads",
+      "Asphalt roads with some distress",
+      "Earth roads",
+      "Gravel roads",
+      "Other"
+    ],
+    "Road_surface_conditions": [
+      "Dry",
+      "Flood over 3cm. deep",
+      "Snow",
+      "Wet or damp"
+    ],
+    "Light_conditions": [
+      "Darkness - lights lit",
+      "Darkness - lights unlit",
+      "Darkness - no lighting",
+      "Daylight"
+    ],
+    "Weather_conditions": [
+      "Cloudy",
+      "Fog or mist",
+      "Normal",
+      "Other",
+      "Raining",
+      "Raining and Windy",
+      "Snow",
+      "Unknown",
+      "Windy"
+    ],
+    "Types_of_Junction": [
+      "Crossing",
+      "No junction",
+      "O Shape",
+      "Other",
+      "T Shape",
+      "Unknown",
+      "X Shape",
+      "Y Shape"
+    ],
+    "Type_of_collision": [
+      "Collision with animals",
+      "Collision with pedestrians",
+      "Collision with roadside objects",
+      "Collision with roadside-parked vehicles",
+      "Fall from vehicles",
+      "Other",
+      "Rollover",
+      "Unknown",
+      "Vehicle with vehicle collision",
+      "With Train"
+    ]
+  }
+}
