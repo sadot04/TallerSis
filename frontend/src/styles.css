@@ -68,6 +68,7 @@ nav button[aria-current] { border-bottom-color: var(--accent); }
 .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 13px; min-width: 0; overflow: clip; }
 .panel-heading, .panel-body, fieldset, .form-footer { padding: 1rem 1.3rem; }
 .panel-heading { min-height: 63px; display: flex; align-items: center; justify-content: space-between; gap: .8rem; border-bottom: 1px solid var(--line); }
+.example-choices { display: flex; flex-wrap: wrap; gap: .55rem; padding: .7rem 1.3rem; border-bottom: 1px solid var(--line); }
 .panel-heading p, .model-id p { font-size: .9rem; margin-top: .3rem; }
 form { margin: 0; }
 fieldset { min-width: 0; margin: 0; border: 0; padding-top: 0; }
@@ -171,7 +172,7 @@ td.diagonal { background: var(--accent-mild); color: var(--accent); font-weight:
   .page-heading { display: grid; }
   .page-heading h1, .login h1 { font-size: 1.82rem; }
   .service { margin-top: 0; justify-self: start; }
-  .panel-heading, .panel-body, fieldset, .form-footer { padding-inline: .9rem; }
+  .panel-heading, .panel-body, fieldset, .form-footer, .example-choices { padding-inline: .9rem; }
   .form-grid { grid-template-columns: 1fr; }
   .form-footer { justify-content: stretch; }
   .form-footer button { width: 100%; }
