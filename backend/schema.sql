@@ -41,4 +41,5 @@ CREATE TABLE IF NOT EXISTS training_jobs (
     finished_at TEXT
 ) STRICT;
 
+CREATE UNIQUE INDEX IF NOT EXISTS one_job_per_model ON training_jobs(model_id);
 CREATE UNIQUE INDEX IF NOT EXISTS one_running_training ON training_jobs(status) WHERE status = 'running';

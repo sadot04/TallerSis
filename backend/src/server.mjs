@@ -18,7 +18,7 @@ const password = process.env.OPERATOR_PASSWORD || '';
 if (Buffer.byteLength(secret) < 32 || password.length < 12) {
   throw new Error('Configura JWT_SECRET (32 bytes) y OPERATOR_PASSWORD (12 caracteres) en backend/.env.');
 }
-const origins = new Set((process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+const origins = new Set((process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173')
   .split(',').map(origin => origin.trim()).filter(Boolean));
 const digest = value => createHash('sha256').update(value).digest();
 const match = (given, expected) => timingSafeEqual(digest(given), digest(expected));
@@ -83,7 +83,7 @@ app.get('/api/model/features', (_req, res) => res.json(getFeatures()));
 app.get('/api/model/metrics', (_req, res) => res.json(getMetrics()));
 app.get('/api/model/export', (_req, res, next) => {
   const { version } = getExport();
-  res.download(modelPath(version), 'modelo-vial-' + version + '.joblib', next);
+  res.download(modelPath(version), 'modelo-vial-' + version + '.joblib', error => { if (error) next(error); });
 });
 app.post('/api/predictions', async (req, res) => res.status(201).json(await predict(req.body, req.operator)));
 app.get('/api/predictions', (req, res) => {
@@ -98,7 +98,17 @@ app.get('/api/predictions', (req, res) => {
 });
 const receiveCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 0, parts: 2 } });
 app.get('/api/datasets', (_req, res) => res.json(datasets()));
-app.post('/api/datasets', receiveCsv.single('file'), async (req, res) => res.status(201).json(await upload(req.file)));
+const limitUploads = rateLimit({
+  windowMs: 60 * 1000, limit: 8, standardHeaders: 'draft-8', legacyHeaders: false,
+  message: { message: 'Demasiadas cargas por minuto. Intenta nuevamente.' },
+});
+app.post('/api/datasets', limitUploads, (req, res, next) => {
+  if (!req.is('multipart/form-data')) return next(new HttpError(422, 'Envía el CSV como multipart/form-data.'));
+  receiveCsv.single('file')(req, res, error => {
+    if (error && !(error instanceof multer.MulterError)) return next(new HttpError(422, 'El archivo multipart está incompleto o es inválido.'));
+    next(error);
+  });
+}, async (req, res) => res.status(201).json(await upload(req.file)));
 app.post('/api/model/retrain', (req, res) => {
   const job = startTraining(req.body?.datasetId);
   res.location('/api/model/retrain/' + job.id).status(202).json(job);
