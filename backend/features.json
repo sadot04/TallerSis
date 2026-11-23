@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Time",
+    "label": "Hora del accidente",
+    "type": "time",
+    "example": "17:02"
+  },
+  {
+    "name": "Day_of_week",
+    "label": "Día de la semana",
+    "type": "category",
+    "example": "Monday"
+  },
+  {
+    "name": "Driving_experience",
+    "label": "Experiencia de conducción",
+    "type": "category",
+    "example": "2-5yr"
+  },
+  {
+    "name": "Type_of_vehicle",
+    "label": "Tipo de vehículo",
+    "type": "category",
+    "example": "Automobile"
+  },
+  {
+    "name": "Area_accident_occured",
+    "label": "Tipo de zona",
+    "type": "category",
+    "example": "Residential areas"
+  },
+  {
+    "name": "Road_surface_type",
+    "label": "Superficie de la vía",
+    "type": "category",
+    "example": "Asphalt roads"
+  },
+  {
+    "name": "Road_surface_conditions",
+    "label": "Estado de la superficie",
+    "type": "category",
+    "example": "Dry"
+  },
+  {
+    "name": "Light_conditions",
+    "label": "Iluminación",
+    "type": "category",
+    "example": "Daylight"
+  },
+  {
+    "name": "Weather_conditions",
+    "label": "Condiciones meteorológicas",
+    "type": "category",
+    "example": "Normal"
+  },
+  {
+    "name": "Types_of_Junction",
+    "label": "Tipo de cruce",
+    "type": "category",
+    "example": "No junction"
+  },
+  {
+    "name": "Type_of_collision",
+    "label": "Tipo de colisión",
+    "type": "category",
+    "example": "Vehicle with vehicle collision"
+  },
+  {
+    "name": "Number_of_vehicles_involved",
+    "label": "Vehículos involucrados",
+    "type": "integer",
+    "example": 2
+  },
+  {
+    "name": "Number_of_casualties",
+    "label": "Personas afectadas",
+    "type": "integer",
+    "example": 1
+  }
+]
