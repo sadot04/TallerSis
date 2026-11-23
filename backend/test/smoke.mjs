@@ -96,6 +96,13 @@ try {
   assert.equal(initial.version, 'ref-v2');
   assert.equal(prediction.version, initial.version);
   assert.ok(initial.macroF1 > initial.baselineMacroF1);
+  const importance = initial.featureImportance;
+  assert.equal(importance.metric, 'macroF1');
+  assert.equal(importance.repeats, 10);
+  assert.equal(importance.testRows, initial.testRows);
+  assert.equal(importance.baselineMacroF1, initial.macroF1);
+  assert.deepEqual(importance.features.map(field => field.name).sort(), Object.keys(input).sort());
+  assert.ok(importance.features.every((field, i, all) => !i || all[i - 1].meanDrop >= field.meanDrop));
   const exportResponse = await request('/api/model/export', 200);
   assert.match(exportResponse.headers.get('content-disposition'), /modelo-vial-ref-v2\.joblib/);
   assert.deepEqual(Buffer.from(await exportResponse.arrayBuffer()), await readFile('seed/ref-v2/model.joblib'));
@@ -119,10 +126,12 @@ try {
     const promoted = await (await request('/api/model/metrics', 200)).json();
     assert.equal(promoted.version, job.id);
     assert.equal(promoted.macroF1, initial.macroF1);
+    assert.deepEqual(promoted.featureImportance, importance);
     await stop();
     await start();
     const afterRestart = await (await request('/api/model/metrics', 200)).json();
     assert.equal(afterRestart.version, job.id);
+    assert.deepEqual(afterRestart.featureImportance, importance);
     const persisted = await (await request('/api/predictions', 200)).json();
     assert.equal(persisted.items[0].version, initial.version);
   }
