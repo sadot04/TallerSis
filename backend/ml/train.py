@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import joblib
 import numpy as np
@@ -69,6 +70,11 @@ def identify(x):
     return pd.util.hash_pandas_object(x, index=False)
 
 
+def reference_split(x, y):
+    split = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=SEED)
+    return next(split.split(x, y, identify(x)))
+
+
 def candidates():
     categorical = make_pipeline(SimpleImputer(strategy="constant", fill_value="Sin dato"), OneHotEncoder(handle_unknown="ignore"))
     ordinal = make_pipeline(SimpleImputer(strategy="constant", fill_value="Sin dato"),
@@ -94,6 +100,26 @@ def adjust_decision(probabilities, factors):
     return scores / scores.sum(axis=1, keepdims=True)
 
 
+def measure_feature_importance(estimator, factors, x, y, baseline):
+    """Measure the drop in macro F1 after shuffling one feature at a time."""
+    repeats = 10
+    random = np.random.default_rng(SEED)
+    orders = [random.permutation(len(x)) for _ in range(repeats)]
+    labels_by_field = {field["name"]: field["label"] for field in FEATURES}
+    features = []
+    for column in x.columns:
+        shuffled = [x.assign(**{column: x[column].iloc[order].to_numpy()}) for order in orders]
+        scores = adjust_decision(estimator.predict_proba(pd.concat(shuffled, ignore_index=True)), factors)
+        predicted = estimator.classes_[np.argmax(scores, axis=1)]
+        drops = [baseline - f1_score(y, part, labels=LABELS, average="macro")
+                 for part in np.split(predicted, repeats)]
+        name = "Time" if column == "Hour" else column
+        features.append({"name": name, "label": labels_by_field[name],
+                         "meanDrop": float(np.mean(drops)), "stdDrop": float(np.std(drops))})
+    return {"metric": "macroF1", "repeats": repeats, "testRows": len(x), "baselineMacroF1": baseline,
+            "features": sorted(features, key=lambda item: item["meanDrop"], reverse=True)}
+
+
 def tune_decision(y, probabilities, classes):
     """Choose decision multipliers from out-of-fold predictions only."""
     expected = np.searchsorted(classes, y)
@@ -117,8 +143,7 @@ def tune_decision(y, probabilities, classes):
 def train(source, reference, out):
     x, y = read_training(reference)
     groups = identify(x)
-    split = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=SEED)
-    train_ids, test_ids = next(split.split(x, y, groups))
+    train_ids, test_ids = reference_split(x, y)
     test_x, test_y = x.iloc[test_ids], y.iloc[test_ids]
     fit_x, fit_y = x.iloc[train_ids], y.iloc[train_ids]
     if source.resolve() != reference.resolve():
@@ -162,6 +187,7 @@ def train(source, reference, out):
         "sklearnVersion": sklearn.__version__,
         "seed": SEED,
     }
+    metrics["featureImportance"] = measure_feature_importance(estimator, factors, test_x, test_y, metrics["macroF1"])
     levels = {field: sorted(fit_x[field].dropna().unique().tolist()) for field in CATEGORIES}
     out.mkdir(parents=True, exist_ok=True)
     joblib.dump({"estimator": estimator, "decisionFactors": factors}, out / "model.joblib", compress=3)
@@ -181,6 +207,36 @@ def predict(path, payload):
     return {"category": predicted, "probabilities": probabilities}
 
 
+def backfill_feature_importance(reference, report_path):
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    metrics = report["metrics"]
+    if hashlib.sha256(reference.read_bytes()).hexdigest() != metrics["referenceSha256"]:
+        raise ValueError("El CSV no coincide con la referencia del modelo.")
+    artifact = joblib.load(report_path.with_name("model.joblib"))
+    estimator = artifact["estimator"] if isinstance(artifact, dict) else artifact
+    factors = artifact["decisionFactors"] if isinstance(artifact, dict) else np.ones(len(estimator.classes_))
+    x, y = read_training(reference)
+    _, test_ids = reference_split(x, y)
+    x, y = x.iloc[test_ids], y.iloc[test_ids]
+    scores = adjust_decision(estimator.predict_proba(x), factors)
+    predicted = estimator.classes_[np.argmax(scores, axis=1)]
+    baseline = f1_score(y, predicted, labels=LABELS, average="macro")
+    if len(x) != metrics["testRows"] or not np.isclose(baseline, metrics["macroF1"], rtol=0, atol=1e-12):
+        raise ValueError("El modelo y la prueba no reproducen las métricas del reporte.")
+    importance = measure_feature_importance(estimator, factors, x, y, baseline)
+    metrics["featureImportance"] = importance
+    temporary = None
+    try:
+        with NamedTemporaryFile(mode="w", encoding="utf-8", dir=report_path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(report, stream, ensure_ascii=False, indent=2)
+        temporary.replace(report_path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return importance
+
+
 def main():
     cli = argparse.ArgumentParser()
     commands = cli.add_subparsers(dest="command", required=True)
@@ -189,6 +245,9 @@ def main():
         fit.add_argument("--" + flag, required=True, type=Path)
     check = commands.add_parser("validate")
     check.add_argument("--source", required=True, type=Path)
+    importance = commands.add_parser("importance")
+    importance.add_argument("--reference", required=True, type=Path)
+    importance.add_argument("--report", required=True, type=Path)
     predict_cli = commands.add_parser("predict")
     predict_cli.add_argument("--model", required=True, type=Path)
     args = cli.parse_args()
@@ -198,6 +257,8 @@ def main():
         elif args.command == "validate":
             x, y = read_training(args.source)
             print(json.dumps({"rows": len(x), "classes": y.value_counts().to_dict()}))
+        elif args.command == "importance":
+            print(json.dumps(backfill_feature_importance(args.reference, args.report)))
         else:
             import sys
             print(json.dumps(predict(args.model, json.load(sys.stdin)), ensure_ascii=False))

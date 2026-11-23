@@ -1121,6 +1121,9 @@
               "maximum": 1
             }
           },
+          "featureImportance": {
+            "$ref": "#/components/schemas/FeatureImportance"
+          },
           "trainRows": {
             "type": "integer",
             "minimum": 0
@@ -1148,6 +1151,30 @@
           "seed": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "FeatureImportance": {
+        "type": "object",
+        "description": "Importancia por permutación en la prueba reservada. Una caída de 0.13 equivale a 13 puntos porcentuales de F1 macro.",
+        "required": ["metric", "repeats", "testRows", "baselineMacroF1", "features"],
+        "properties": {
+          "metric": {"const": "macroF1"},
+          "repeats": {"type": "integer", "minimum": 1},
+          "testRows": {"type": "integer", "minimum": 1},
+          "baselineMacroF1": {"type": "number", "minimum": 0, "maximum": 1},
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "label", "meanDrop", "stdDrop"],
+              "properties": {
+                "name": {"type": "string"},
+                "label": {"type": "string"},
+                "meanDrop": {"type": "number", "minimum": -1, "maximum": 1},
+                "stdDrop": {"type": "number", "minimum": 0}
+              }
+            }
           }
         }
       },
