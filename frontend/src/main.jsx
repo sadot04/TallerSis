@@ -317,16 +317,87 @@ function HistoryPanel({ api, fields }) {
   </section>;
 }
 
+function FeatureImportance({ importance }) {
+  const features = importance?.features ?? [];
+  const minimum = Math.min(0, ...features.map(feature => feature.meanDrop));
+  const maximum = Math.max(0, ...features.map(feature => feature.meanDrop));
+  const range = maximum - minimum || 1;
+  const offset = value => 100 * (value - minimum) / range;
+  const formatDrop = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 2, signDisplay: 'exceptZero' });
+  const formatPp = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 2 });
+
+  const getIncidenceBadge = (drop) => {
+    if (drop >= 0.10) return { label: 'Crítica', color: 'rose' };
+    if (drop >= 0.05) return { label: 'Alta', color: 'amber' };
+    if (drop >= 0.01) return { label: 'Moderada', color: 'green' };
+    return { label: 'Marginal', color: 'muted' };
+  };
+
+  const topThree = features.slice(0, 3);
+
+  return <section className="panel">
+    <div className="panel-heading"><div><h2>Variables con mayor incidencia en la predicción</h2>
+      {features.length > 0 && <p className="muted">Caída promedio del F1 macro al mezclar cada campo. Evaluado sobre {number(importance.testRows)} casos de prueba con {importance.repeats} repeticiones por variable.</p>}
+    </div></div>
+    {features.length ? <>
+      <div className="top-incidence-grid">
+        {topThree.map((feat, index) => {
+          const badge = getIncidenceBadge(feat.meanDrop);
+          return <div className="top-incidence-card" key={feat.name}>
+            <div className="top-incidence-meta">
+              <span className="rank-badge">#{index + 1}</span>
+              <span className={'chip ' + badge.color}>{badge.label}</span>
+            </div>
+            <strong>{feat.label}</strong>
+            <div className="incidence-impact">
+              <span className="impact-value">+{formatPp.format(feat.meanDrop * 100)} pp</span>
+              <span className="impact-std">± {formatPp.format(feat.stdDrop * 100)} pp</span>
+            </div>
+            <p className="incidence-desc">Pérdida en F1 macro si se omite</p>
+          </div>;
+        })}
+      </div>
+      <div className="table-scroll"><table><thead><tr>
+        <th scope="col">#</th>
+        <th scope="col">Variable</th>
+        <th scope="col">Nivel</th>
+        <th scope="col">Caída en F1 macro</th>
+        <th scope="col">Variabilidad (± std)</th>
+        <th scope="col" style={{ minWidth: '170px' }}>Impacto relativo</th>
+      </tr></thead>
+        <tbody>{features.map((feature, index) => {
+          const badge = getIncidenceBadge(feature.meanDrop);
+          return <tr key={feature.name}>
+            <td><strong>#{index + 1}</strong></td>
+            <td><strong>{feature.label}</strong> <span className="muted" style={{ fontSize: '.8rem' }}>({feature.name})</span></td>
+            <td><span className={'chip ' + badge.color}>{badge.label}</span></td>
+            <td><strong>{formatDrop.format(feature.meanDrop * 100)} pp</strong></td>
+            <td className="muted">± {formatPp.format(feature.stdDrop * 100)} pp</td>
+            <td><div className="importance-track" aria-hidden="true" style={{ '--importance-zero': offset(0) + '%' }}>
+              <span className={feature.meanDrop < 0 ? 'importance-bar negative' : 'importance-bar'} style={{
+                left: offset(Math.min(0, feature.meanDrop)) + '%', width: 100 * Math.abs(feature.meanDrop) / range + '%',
+              }} />
+            </div></td>
+          </tr>;
+        })}</tbody>
+      </table></div>
+    </> : <p className="panel-body muted">Esta versión todavía no tiene un cálculo de importancia guardado.</p>}
+  </section>;
+}
+
 function ModelMetrics({ data }) {
+  const topFeature = data.featureImportance?.features?.[0];
   const primary = [
     ['F1 macro', data.macroF1, 'Equilibrio entre precisión y sensibilidad de las tres clases.'],
     ['Exactitud', data.accuracy, 'Porcentaje de reportes clasificados correctamente.'],
     ['Exactitud balanceada', data.balancedAccuracy, 'Promedio de la sensibilidad por clase.'],
-    ['F1 macro de referencia', data.baselineMacroF1, 'Clasificador que siempre predice la clase más frecuente.'],
+    topFeature
+      ? ['Mayor incidencia', `+${(topFeature.meanDrop * 100).toFixed(1)} pp`, `Variable más crítica: ${topFeature.label}.`]
+      : ['F1 macro de referencia', data.baselineMacroF1, 'Clasificador que siempre predice la clase más frecuente.'],
   ];
   return <>
     <div className="stat-grid">{primary.map(([title, value, description]) => <div className="stat" key={title}>
-      <span>{title}</span><strong>{pct(value)}</strong><p>{description}</p>
+      <span>{title}</span><strong>{typeof value === 'number' ? pct(value) : value}</strong><p>{description}</p>
     </div>)}</div>
     <div className="panel">
       <div className="panel-heading"><div><h2>Desempeño por categoría</h2><p className="muted">{number(data.testRows)} reportes de prueba · {number(data.trainRows)} de entrenamiento</p></div></div>
@@ -343,6 +414,7 @@ function ModelMetrics({ data }) {
           {row.map((count, j) => <td key={data.labels[j]} className={i === j ? 'diagonal' : ''}>{number(count)}</td>)}</tr>)}</tbody>
       </table></div>
     </div>
+    <FeatureImportance importance={data.featureImportance} />
     <div className="panel"><div className="panel-heading"><h2>Selección de algoritmo</h2></div>
       <div className="table-scroll"><table><thead><tr><th>Algoritmo</th><th>F1 macro en validación</th></tr></thead>
         <tbody>{Object.entries(data.validationMacroF1).map(([name, value]) => <tr key={name}><td>{name}{name === data.algorithm && <small className="selected-algorithm">Seleccionado</small>}</td>

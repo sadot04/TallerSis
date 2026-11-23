@@ -76,7 +76,93 @@
     "sourceSha256": "c0ddb80c64bada8a6b833077d5f4a861114d709fd008a7aa70134fbd3353e7c5",
     "referenceSha256": "c0ddb80c64bada8a6b833077d5f4a861114d709fd008a7aa70134fbd3353e7c5",
     "sklearnVersion": "1.9.0",
-    "seed": 42
+    "seed": 42,
+    "featureImportance": {
+      "metric": "macroF1",
+      "repeats": 10,
+      "testRows": 1632,
+      "baselineMacroF1": 0.5489523299180457,
+      "features": [
+        {
+          "name": "Number_of_casualties",
+          "label": "Personas afectadas",
+          "meanDrop": 0.13435538470631436,
+          "stdDrop": 0.015785176875871863
+        },
+        {
+          "name": "Day_of_week",
+          "label": "Día de la semana",
+          "meanDrop": 0.11195878458085425,
+          "stdDrop": 0.01619579275708017
+        },
+        {
+          "name": "Time",
+          "label": "Hora del accidente",
+          "meanDrop": 0.08024098877528203,
+          "stdDrop": 0.013334047970728322
+        },
+        {
+          "name": "Number_of_vehicles_involved",
+          "label": "Vehículos involucrados",
+          "meanDrop": 0.06765540359087155,
+          "stdDrop": 0.021897669843496084
+        },
+        {
+          "name": "Types_of_Junction",
+          "label": "Tipo de cruce",
+          "meanDrop": 0.06502612462661991,
+          "stdDrop": 0.01172614038346941
+        },
+        {
+          "name": "Light_conditions",
+          "label": "Iluminación",
+          "meanDrop": 0.031485314199211675,
+          "stdDrop": 0.005768931658733679
+        },
+        {
+          "name": "Weather_conditions",
+          "label": "Condiciones meteorológicas",
+          "meanDrop": 0.0173536352421238,
+          "stdDrop": 0.0034979882428779
+        },
+        {
+          "name": "Road_surface_conditions",
+          "label": "Estado de la superficie",
+          "meanDrop": 0.010691146077473512,
+          "stdDrop": 0.0020612105172390007
+        },
+        {
+          "name": "Area_accident_occured",
+          "label": "Tipo de zona",
+          "meanDrop": 0.010060140944849649,
+          "stdDrop": 0.008206151126562766
+        },
+        {
+          "name": "Type_of_vehicle",
+          "label": "Tipo de vehículo",
+          "meanDrop": 0.008409287969860058,
+          "stdDrop": 0.009373709565273355
+        },
+        {
+          "name": "Type_of_collision",
+          "label": "Tipo de colisión",
+          "meanDrop": 0.0017950355983180621,
+          "stdDrop": 0.012155027202489658
+        },
+        {
+          "name": "Road_surface_type",
+          "label": "Superficie de la vía",
+          "meanDrop": -0.000326136742140648,
+          "stdDrop": 0.002542703505148373
+        },
+        {
+          "name": "Driving_experience",
+          "label": "Experiencia de conducción",
+          "meanDrop": -0.0014388839689990385,
+          "stdDrop": 0.01584687874046265
+        }
+      ]
+    }
   },
   "options": {
     "Day_of_week": [
