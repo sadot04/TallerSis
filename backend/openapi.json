@@ -284,7 +284,7 @@
         "summary": "Descargar el pipeline activo",
         "responses": {
           "200": {
-            "description": "Archivo Joblib",
+            "description": "Archivo Joblib del modelo activo y sus factores de decisión, cuando correspondan.",
             "headers": {
               "Content-Disposition": {
                 "schema": {
@@ -966,6 +966,7 @@
           },
           "probabilities": {
             "type": "object",
+            "description": "Puntajes normalizados de las clases. Pueden incorporar factores de decisión y no son probabilidades calibradas.",
             "additionalProperties": {
               "type": "number",
               "minimum": 0,

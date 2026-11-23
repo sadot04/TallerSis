@@ -12,8 +12,10 @@ const runtime = process.env.RUNTIME_DIR || join(root, 'runtime');
 const reference = process.env.REFERENCE_CSV || join(root, 'data', 'train.csv');
 const python = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'py' : 'python3');
 const seed = 'initial';
+const optimized = 'ref-v2';
+const bundled = new Map([[seed, join(root, 'seed')], [optimized, join(root, 'seed', optimized)]]);
 const uploadPath = id => join(runtime, 'uploads', id + '.csv');
-const modelDir = id => id === seed ? join(root, 'seed') : join(runtime, 'models', id);
+const modelDir = id => bundled.get(id) || join(runtime, 'models', id);
 export const modelPath = id => join(modelDir(id), 'model.joblib');
 const modelReport = id => readJson(join(modelDir(id), 'report.json'));
 const now = () => new Date().toISOString();
@@ -39,7 +41,27 @@ db.prepare("UPDATE training_jobs SET status = 'failed', message = ?, finished_at
 
 const activeModel = () => db.prepare('SELECT id, created_at AS createdAt FROM models WHERE active = 1').get();
 const jsonModelMetrics = row => ({ version: row.id, createdAt: row.createdAt, ...modelReport(row.id).metrics });
+registerOptimizedModel();
 let predictionsRunning = 0;
+
+function registerOptimizedModel() {
+  if (db.prepare('SELECT id FROM models WHERE id = ?').get(optimized)) return;
+  const candidate = modelReport(optimized).metrics;
+  const active = jsonModelMetrics(activeModel());
+  const promote = candidate.referenceSha256 === active.referenceSha256 && candidate.macroF1 > active.macroF1
+    && candidate.perClass['Fatal injury'].recall >= active.perClass['Fatal injury'].recall;
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (promote) db.prepare('UPDATE models SET active = 0 WHERE active = 1').run();
+    db.prepare('INSERT INTO models VALUES (?, NULL, ?, ?, ?)')
+      .run(optimized, JSON.stringify(candidate), now(), Number(promote));
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
 
 function runModel(args, input, timeout) {
   return new Promise((resolve, reject) => {
