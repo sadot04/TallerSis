@@ -94,7 +94,11 @@ Para entrenar desde la raíz y reproducir las métricas publicadas:
 py backend/ml/train.py train --source backend/data/train.csv --reference backend/data/train.csv --out backend/runtime/reproducido
 ```
 
-Para repetir la exploración, abre el [notebook](backend/ml/exploracion.ipynb) desde `backend/ml`.
+### Notebook completo del modelo
+
+[exploracion.ipynb](backend/ml/exploracion.ipynb) incluye la exploración, limpieza, partición, validación cruzada, entrenamiento, evaluación, exportación y predicción de ejemplo en sus propias celdas. Las salidas guardadas reproducen las métricas de `ref-v2`.
+
+Para volver a ejecutarlo, usa un kernel Python con las dependencias de `backend/ml/requirements.txt` e instala Jupyter y Matplotlib con `py -m pip install jupyter matplotlib` si te faltan. Abre el notebook y elige **Ejecutar todo**. El notebook busca el `train.csv` importado en el proyecto. También puedes copiar solo el notebook y `train.csv` a otra carpeta y ejecutarlo ahí. El modelo y el reporte que genera se guardan en una carpeta de salida propia.
 
 ## Entregables
 
