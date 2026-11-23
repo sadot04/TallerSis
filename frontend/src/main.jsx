@@ -1,14 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, ChartNoAxesCombined, ClipboardList,
-  Database, FileSpreadsheet, FlaskConical, GitBranch, History, LockKeyhole, LogOut, Route, UploadCloud,
+  Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, ChartNoAxesCombined, ChevronDown, ClipboardList,
+  Database, FlaskConical, GitBranch, History, LockKeyhole, LogOut, Route, UploadCloud,
 } from 'lucide-react';
 import { request, swaggerUrl } from './api.js';
 import './styles.css';
 
 const labels = { 'Slight Injury': 'Lesión leve', 'Serious Injury': 'Lesión grave', 'Fatal injury': 'Lesión fatal' };
 const colors = { 'Slight Injury': 'green', 'Serious Injury': 'amber', 'Fatal injury': 'rose' };
+const examplePresets = {
+  'Slight Injury': { Area_accident_occured: 'Office areas', Types_of_Junction: 'Crossing' },
+  'Serious Injury': { Time: '15:00', Types_of_Junction: 'O Shape' },
+  'Fatal injury': { Day_of_week: 'Sunday', Number_of_casualties: 5 },
+};
 const optionLabels = {
   Monday: 'Lunes',
   Tuesday: 'Martes',
@@ -184,9 +189,11 @@ function Brand() {
 
 function Field({ field, value, onChange }) {
   const selectOptions = useMemo(() => {
-    if (!field.options) return [];
-    return [...new Set([field.example, ...field.options])].sort((a, b) => human(a).localeCompare(human(b), 'es'));
-  }, [field]);
+    if (field.type !== 'category') return [];
+    const options = new Set([field.example, ...(field.options ?? [])]);
+    if (value) options.add(value);
+    return [...options].sort((a, b) => human(a).localeCompare(human(b), 'es'));
+  }, [field, value]);
   return <label className="field"><span>{field.label}</span>
     {field.type === 'category'
       ? <select required value={value} onChange={event => onChange(event.target.value)}>
@@ -203,9 +210,12 @@ function PredictionPanel({ api, fields }) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [examplesOpen, setExamplesOpen] = useState(false);
+  const examplesButton = useRef(null);
   const byName = Object.fromEntries((fields.data || []).map(field => [field.name, field]));
   async function classify(event) {
     event.preventDefault();
+    setExamplesOpen(false);
     setError('');
     setBusy(true);
     setResult(null);
@@ -220,14 +230,32 @@ function PredictionPanel({ api, fields }) {
       setBusy(false);
     }
   }
-  function example() {
-    setValues(Object.fromEntries(fields.data.map(field => [field.name, field.example])));
+  function chooseExample(preset) {
+    const defaults = Object.fromEntries(fields.data.map(field => [field.name, field.example]));
+    setValues({ ...defaults, ...preset });
+    setResult(null);
+    setError('');
+    setExamplesOpen(false);
+    examplesButton.current?.focus();
   }
   return <div className="split">
     <section className="panel">
-      <div className="panel-heading"><h2>Datos del accidente</h2><button className="secondary" onClick={example} disabled={!fields.data || busy}>
-        <FileSpreadsheet size={16} /> Usar ejemplo
-      </button></div>
+      <div className="panel-heading">
+        <h2>Datos del accidente</h2>
+        <button ref={examplesButton} type="button" className="secondary" disabled={!fields.data || busy}
+          aria-expanded={examplesOpen && Boolean(fields.data)} aria-controls="prediction-examples"
+          onClick={() => setExamplesOpen(open => !open)}>
+          Usar ejemplo <ChevronDown size={16} aria-hidden="true" />
+        </button>
+      </div>
+      <div id="prediction-examples" className="example-choices" role="group" aria-label="Ejemplos por gravedad"
+        hidden={!examplesOpen || !fields.data}>
+        {Object.entries(examplePresets).map(([category, preset]) => (
+          <button key={category} type="button" className="secondary" onClick={() => chooseExample(preset)}>
+            {labels[category]}
+          </button>
+        ))}
+      </div>
       {fields.loading && <Notice>Cargando campos del modelo…</Notice>}
       <Notice error>{fields.error}</Notice>
       {fields.data && <form onSubmit={classify}>
