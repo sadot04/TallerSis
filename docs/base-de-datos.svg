@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="632" viewBox="0 0 1040 632" role="img" aria-labelledby="title desc">
+  <title id="title">Esquema de la base de datos de Observatorio Vial</title>
+  <desc id="desc">Cuatro tablas SQLite. Datasets se relaciona con muchos modelos y trabajos. Un modelo puede vincularse con un trabajo promovido y muchas predicciones.</desc>
+  <defs>
+    <style>
+      .table { fill:#fff; stroke:#b9cfc5; stroke-width:2 }
+      .head { fill:#e6f2ec }
+      .name { font:700 23px 'Segoe UI',sans-serif; fill:#14493b }
+      .field { font:16px 'Segoe UI',sans-serif; fill:#243d35 }
+      .key { font-weight:700;fill:#105c48 }
+      .line { fill:none; stroke:#356d59; stroke-width:2 }
+      .cardinality { font:700 14px 'Segoe UI',sans-serif; fill:#245644; paint-order:stroke; stroke:#f3f7f4; stroke-width:6; stroke-linejoin:round }
+      .legend { font:15px 'Segoe UI',sans-serif; fill:#415c52 }
+    </style>
+  </defs>
+  <rect width="1040" height="632" fill="#f3f7f4"/>
+  <path class="line" d="M359 139H681 M209 239V380 M830 239V380 M681 193H532V490H359"/>
+  <g transform="translate(59 46)">
+    <rect class="table" width="300" height="193" rx="12"/>
+    <path class="head" d="M12 1h276a11 11 0 0 1 11 11v38H1V12A11 11 0 0 1 12 1z"/>
+    <text class="name" x="20" y="34">datasets</text>
+    <text class="field" x="20" y="76">
+      <tspan class="key">PK</tspan><tspan> id</tspan>
+      <tspan x="20" dy="24">filename</tspan>
+      <tspan x="20" dy="24">row_count</tspan>
+      <tspan x="20" dy="24">classes_json</tspan>
+      <tspan x="20" dy="24">created_at</tspan>
+    </text>
+  </g>
+  <g transform="translate(681 46)">
+    <rect class="table" width="300" height="193" rx="12"/>
+    <path class="head" d="M12 1h276a11 11 0 0 1 11 11v38H1V12A11 11 0 0 1 12 1z"/>
+    <text class="name" x="20" y="34">models</text>
+    <text class="field" x="20" y="76">
+      <tspan class="key">PK</tspan><tspan> id</tspan>
+      <tspan x="20" dy="24" class="key">FK</tspan><tspan> dataset_id (opcional)</tspan>
+      <tspan x="20" dy="24">metrics_json</tspan>
+      <tspan x="20" dy="24">created_at</tspan>
+      <tspan x="20" dy="24">active</tspan>
+    </text>
+  </g>
+  <g transform="translate(59 380)">
+    <rect class="table" width="300" height="206" rx="12"/>
+    <path class="head" d="M12 1h276a11 11 0 0 1 11 11v38H1V12A11 11 0 0 1 12 1z"/>
+    <text class="name" x="20" y="34">training_jobs</text>
+    <text class="field" x="20" y="76">
+      <tspan class="key">PK</tspan><tspan> id</tspan>
+      <tspan x="20" dy="23" class="key">FK</tspan><tspan> dataset_id</tspan>
+      <tspan x="20" dy="23" class="key">FK</tspan><tspan> model_id (opcional)</tspan>
+      <tspan x="20" dy="23">status, metrics_json, message</tspan>
+      <tspan x="20" dy="23">created_at, finished_at</tspan>
+    </text>
+  </g>
+  <g transform="translate(681 380)">
+    <rect class="table" width="300" height="206" rx="12"/>
+    <path class="head" d="M12 1h276a11 11 0 0 1 11 11v38H1V12A11 11 0 0 1 12 1z"/>
+    <text class="name" x="20" y="34">predictions</text>
+    <text class="field" x="20" y="76">
+      <tspan class="key">PK</tspan><tspan> id</tspan>
+      <tspan x="20" dy="23" class="key">FK</tspan><tspan> model_id</tspan>
+      <tspan x="20" dy="23">operator</tspan>
+      <tspan x="20" dy="23">input_json, result_json</tspan>
+      <tspan x="20" dy="23">created_at</tspan>
+    </text>
+  </g>
+  <text class="cardinality" x="374" y="132">0..1</text>
+  <text class="cardinality" x="644" y="132">0..*</text>
+  <text class="cardinality" x="219" y="260">1</text>
+  <text class="cardinality" x="219" y="368">0..*</text>
+  <text class="cardinality" x="840" y="260">1</text>
+  <text class="cardinality" x="840" y="368">0..*</text>
+  <text class="cardinality" x="644" y="186">0..1</text>
+  <text class="cardinality" x="373" y="483">0..1</text>
+  <text class="legend" x="59" y="613">PK: clave primaria · FK: clave foránea · Los archivos CSV y Joblib se identifican por ID en disco.</text>
+</svg>
